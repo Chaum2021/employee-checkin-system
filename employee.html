@@ -1,37 +1,666 @@
-function checkout() {
-  const selectedEmployee = document.getElementById("employeeSelect").value;
-  if (!selectedEmployee) {
-    alert("กรุณาเลือกพนักงาน");
-    return;
-  }
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เช็คอิน/เอาท์พนักงาน</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  const now = new Date();
-  const date = now.toISOString().split("T")[0];
-  const time = now.toTimeString().split(" ")[0].substring(0, 5);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
 
-  const data = {
-    employeeId: selectedEmployee.split("|")[0],
-    employee: selectedEmployee.split("|")[1],
-    date: date,
-    time: time,
-    location: "", // ถ้ามีพิกัดให้ใส่ตรงนี้
-    earlyMinutes: 0
-  };
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
 
-  const callback = "handleCheckoutResponse";
-  const url = `${scriptURL}?action=checkout&callback=${callback}`;
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
 
-  fetchJsonp(url, {
-    jsonpCallbackFunction: callback,
-    timeout: 8000,
-    jsonpCallback: "callback", // ← สำคัญ!
-    method: 'GET',
-    params: data
-  })
-  .then(response => response.json())
-  .then(handleCheckoutResponse)
-  .catch(err => {
-    console.error("Checkout Error:", err);
-    alert("ไม่สามารถเช็คเอาท์ได้");
-  });
-}
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
+        }
+
+        .employee-select {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .checkin-btn, .checkout-btn {
+            padding: 20px 40px;
+            font-size: 20px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            margin: 15px;
+            transition: all 0.3s ease;
+            min-width: 180px;
+        }
+
+        .checkin-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .checkout-btn {
+            background: linear-gradient(135deg, #f44336, #da190b);
+            color: white;
+        }
+
+        .checkin-btn:hover, .checkout-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        .checkin-btn:disabled, .checkout-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .location-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .company-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-card {
+                padding: 20px;
+            }
+            
+            .checkin-btn, .checkout-btn {
+                width: 100%;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 เช็คอิน/เอาท์</h1>
+            <p id="companyName">ระบบลงเวลาทำงาน</p>
+        </div>
+
+        <div class="main-card">
+            <h2>เลือกพนักงาน</h2>
+            
+            <select id="employeeSelect" class="employee-select">
+                <option value="">กำลังโหลดข้อมูล...</option>
+            </select>
+
+            <div id="companyInfo" class="company-info" style="display: none;">
+                <h4>📋 ข้อมูลบริษัท</h4>
+                <p><strong>เวลาเข้างาน:</strong> <span id="workStart">-</span></p>
+                <p><strong>เวลาเลิกงาน:</strong> <span id="workEnd">-</span></p>
+                <p><strong>เวลาพักเบรค:</strong> <span id="breakTime">-</span> นาที</p>
+            </div>
+
+            <div id="statusCard" class="status-card" style="display: none;">
+                <h3 id="employeeName"></h3>
+                <p id="currentStatus">สถานะ: ยังไม่เช็คอิน</p>
+                <p id="currentTime"></p>
+            </div>
+
+            <div class="location-info" id="locationInfo" style="display: none;">
+                <h4>📍 ตำแหน่งปัจจุบัน</h4>
+                <p id="locationText">กำลังตรวจสอบตำแหน่ง...</p>
+                <p id="locationStatus"></p>
+            </div>
+
+            <div>
+                <button class="checkin-btn" onclick="checkIn()" id="checkinBtn" disabled>
+                    🟢 เช็คอิน
+                </button>
+                <button class="checkout-btn" onclick="checkOut()" id="checkoutBtn" disabled>
+                    🔴 เช็คเอาท์
+                </button>
+            </div>
+
+            <div id="messageArea"></div>
+        </div>
+
+        <div class="footer">
+            <p>💡 เฉพาะพนักงานเท่านั้น | สำหรับผู้ดูแลระบบใช้ลิงก์แยกต่างหาก</p>
+        </div>
+    </div>
+
+    <script>
+        // ตั้งค่าจาก Google Apps Script (จะโหลดมาจาก server)
+        let config = {
+            googleScriptUrl: '',
+            companyName: 'กำลังโหลด...',
+            workStartTime: '09:00',
+            workEndTime: '18:00',
+            breakTime: 60,
+            otRate: 150,
+            socialSecurityRate: 5,
+            socialSecurityCap: 750,
+            officeLat: 16.386829,
+            officeLng: 102.831119,
+            allowedRadius: 100
+        };
+
+        let employees = [];
+        let currentEmployee = null;
+        let userLocation = null;
+        let requestCounter = 0;
+
+        // ดึง Google Apps Script URL จาก URL parameters
+        function getGoogleScriptUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const scriptUrl = urlParams.get('script');
+            
+            if (scriptUrl) {
+                // ถอด encoding ถ้ามี
+                return decodeURIComponent(scriptUrl);
+            }
+            
+            // ถ้าไม่มี parameter ให้แสดง error
+            showMessage('❌ ลิงก์ไม่ถูกต้อง กรุณาใช้ลิงก์ที่ผู้ดูแลระบบส่งให้', 'danger');
+            return null;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            config.googleScriptUrl = getGoogleScriptUrl();
+            
+            if (config.googleScriptUrl) {
+                loadSystemSettings();
+                loadEmployees();
+                updateCurrentTime();
+                setInterval(updateCurrentTime, 1000);
+                checkLocationPermission();
+            }
+        });
+
+        // โหลดการตั้งค่าระบบจาก Google Apps Script
+        async function loadSystemSettings() {
+            try {
+                const result = await callGoogleScriptJSONP('getSettings');
+                
+                if (result.success && result.data) {
+                    // อัปเดตการตั้งค่า
+                    Object.assign(config, result.data);
+                    
+                    // แสดงข้อมูลบริษัท
+                    document.getElementById('companyName').textContent = config.companyName;
+                    document.getElementById('workStart').textContent = config.workStartTime;
+                    document.getElementById('workEnd').textContent = config.workEndTime;
+                    document.getElementById('breakTime').textContent = config.breakTime;
+                    document.getElementById('companyInfo').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Failed to load system settings:', error);
+                // ใช้ค่า default ถ้าโหลดไม่ได้
+            }
+        }
+
+        // JSONP function to bypass CORS
+        function callGoogleScriptJSONP(action, data = {}) {
+            return new Promise((resolve, reject) => {
+                if (!config.googleScriptUrl) {
+                    reject(new Error('Google Apps Script URL ไม่ได้กำหนดค่า'));
+                    return;
+                }
+
+                requestCounter++;
+                const callbackName = `jsonp_callback_${requestCounter}`;
+                
+                // สร้าง parameters
+                const params = new URLSearchParams();
+                params.append('action', action);
+                params.append('callback', callbackName);
+                
+                // เพิ่ม data ลงใน parameters
+                for (const key in data) {
+                    if (typeof data[key] === 'object') {
+                        params.append(key, JSON.stringify(data[key]));
+                    } else {
+                        params.append(key, data[key]);
+                    }
+                }
+
+                const url = `${config.googleScriptUrl}?${params.toString()}`;
+                
+                // สร้าง callback function
+                window[callbackName] = function(response) {
+                    // ลบ script element และ callback function
+                    document.head.removeChild(script);
+                    delete window[callbackName];
+                    
+                    resolve(response);
+                };
+
+                // สร้าง script element สำหรับ JSONP
+                const script = document.createElement('script');
+                script.src = url;
+                script.onerror = function() {
+                    document.head.removeChild(script);
+                    delete window[callbackName];
+                    reject(new Error('Failed to load script'));
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadEmployees() {
+            try {
+                const result = await callGoogleScriptJSONP('getEmployees');
+                
+                if (result.success) {
+                    employees = result.data;
+                    updateEmployeeSelect();
+                } else {
+                    showMessage('ไม่สามารถโหลดข้อมูลพนักงานได้: ' + result.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('เกิดข้อผิดพลาดในการโหลดข้อมูลพนักงาน', 'danger');
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        function updateEmployeeSelect() {
+            const select = document.getElementById('employeeSelect');
+            select.innerHTML = '<option value="">เลือกพนักงาน</option>';
+            
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.id;
+                option.textContent = `${emp.name} (${emp.id})`;
+                select.appendChild(option);
+            });
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('th-TH', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const currentTimeEl = document.getElementById('currentTime');
+            if (currentTimeEl) {
+                currentTimeEl.textContent = timeString;
+            }
+        }
+
+        document.getElementById('employeeSelect').addEventListener('change', function() {
+            const employeeId = this.value;
+            if (employeeId) {
+                currentEmployee = employees.find(emp => emp.id === employeeId);
+                if (currentEmployee) {
+                    showEmployeeStatus();
+                    updateButtons();
+                    updateLocationInfo();
+                }
+            } else {
+                hideEmployeeStatus();
+                currentEmployee = null;
+                updateButtons();
+            }
+        });
+
+        function showEmployeeStatus() {
+            const statusCard = document.getElementById('statusCard');
+            const employeeName = document.getElementById('employeeName');
+            const currentStatus = document.getElementById('currentStatus');
+            
+            statusCard.style.display = 'block';
+            employeeName.textContent = currentEmployee.name;
+            currentStatus.textContent = 'สถานะ: พร้อมเช็คอิน';
+        }
+
+        function hideEmployeeStatus() {
+            document.getElementById('statusCard').style.display = 'none';
+            document.getElementById('locationInfo').style.display = 'none';
+        }
+
+        function updateButtons() {
+            const checkinBtn = document.getElementById('checkinBtn');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            if (currentEmployee && config.googleScriptUrl) {
+                checkinBtn.disabled = false;
+                checkoutBtn.disabled = false;
+            } else {
+                checkinBtn.disabled = true;
+                checkoutBtn.disabled = true;
+            }
+        }
+
+        async function checkLocationPermission() {
+            if ('geolocation' in navigator) {
+                try {
+                    const position = await getCurrentPosition();
+                    userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    updateLocationInfo();
+                } catch (error) {
+                    showMessage('กรุณาอนุญาตการเข้าถึงตำแหน่งเพื่อใช้งานระบบ', 'warning');
+                }
+            }
+        }
+
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                });
+            });
+        }
+
+        function updateLocationInfo() {
+            const locationInfo = document.getElementById('locationInfo');
+            const locationText = document.getElementById('locationText');
+            const locationStatus = document.getElementById('locationStatus');
+            
+            if (userLocation && currentEmployee) {
+                locationInfo.style.display = 'block';
+                locationText.textContent = `Lat: ${userLocation.lat.toFixed(6)}, Lng: ${userLocation.lng.toFixed(6)}`;
+                
+                const distance = calculateDistance(
+                    userLocation.lat, userLocation.lng,
+                    config.officeLat, config.officeLng
+                );
+                
+                if (distance <= config.allowedRadius) {
+                    locationStatus.innerHTML = '✅ อยู่ในพื้นที่ที่อนุญาต';
+                    locationStatus.style.color = '#28a745';
+                } else {
+                    locationStatus.innerHTML = `❌ อยู่นอกพื้นที่ (ห่าง ${Math.round(distance)} เมตร)`;
+                    locationStatus.style.color = '#dc3545';
+                }
+            }
+        }
+
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371000; // Earth's radius in meters
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        async function checkIn() {
+            if (!currentEmployee) {
+                showMessage('กรุณาเลือกพนักงาน', 'warning');
+                return;
+            }
+
+            // Check location
+            try {
+                const position = await getCurrentPosition();
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                const distance = calculateDistance(
+                    userLocation.lat, userLocation.lng,
+                    config.officeLat, config.officeLng
+                );
+
+                if (distance > config.allowedRadius) {
+                    showMessage(`ไม่สามารถเช็คอินได้ คุณอยู่นอกพื้นที่ที่กำหนด (ห่าง ${Math.round(distance)} เมตร)`, 'danger');
+                    return;
+                }
+            } catch (error) {
+                showMessage('ไม่สามารถตรวจสอบตำแหน่งได้ กรุณาเปิด GPS', 'danger');
+                return;
+            }
+
+            // Perform check-in
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('th-TH', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            // Check if late
+            const checkInTime = now.getHours() * 60 + now.getMinutes();
+            const startTime = parseInt(config.workStartTime.split(':')[0]) * 60 + 
+                            parseInt(config.workStartTime.split(':')[1]);
+
+            const lateMinutes = checkInTime > startTime ? checkInTime - startTime : 0;
+
+            try {
+                showMessage('กำลังเช็คอิน...', 'success');
+                
+                const result = await callGoogleScriptJSONP('checkin', {
+                    employee: currentEmployee.name,
+                    employeeId: currentEmployee.id,
+                    date: now.toLocaleDateString('en-CA'),
+                    time: timeString,
+                    location: `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`,
+                    status: lateMinutes > 0 ? 'สาย' : 'ตรงเวลา',
+                    lateMinutes: lateMinutes
+                });
+
+                if (result.success) {
+                    if (lateMinutes > 0) {
+                        showMessage(`✅ เช็คอินสำเร็จ! (สาย ${lateMinutes} นาที)`, 'warning');
+                    } else {
+                        showMessage('✅ เช็คอินสำเร็จ!', 'success');
+                    }
+                    
+                    document.getElementById('currentStatus').textContent = `สถานะ: เช็คอินแล้ว (${timeString} น.)`;
+                    document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%)';
+                } else {
+                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ', 'danger');
+                console.error('CheckIn error:', error);
+            }
+
+            updateLocationInfo();
+        }
+
+        async function checkOut() {
+            if (!currentEmployee) {
+                showMessage('กรุณาเลือกพนักงาน', 'warning');
+                return;
+            }
+
+            // Check location
+            try {
+                const position = await getCurrentPosition();
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                const distance = calculateDistance(
+                    userLocation.lat, userLocation.lng,
+                    config.officeLat, config.officeLng
+                );
+
+                if (distance > config.allowedRadius) {
+                    showMessage(`ไม่สามารถเช็คเอาท์ได้ คุณอยู่นอกพื้นที่ที่กำหนด (ห่าง ${Math.round(distance)} เมตร)`, 'danger');
+                    return;
+                }
+            } catch (error) {
+                showMessage('ไม่สามารถตรวจสอบตำแหน่งได้ กรุณาเปิด GPS', 'danger');
+                return;
+            }
+
+            // Perform check-out
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('th-TH', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            // Check if early leave
+            const checkOutTime = now.getHours() * 60 + now.getMinutes();
+            const endTime = parseInt(config.workEndTime.split(':')[0]) * 60 + 
+                          parseInt(config.workEndTime.split(':')[1]);
+
+            const earlyMinutes = checkOutTime < endTime ? endTime - checkOutTime : 0;
+
+            try {
+                showMessage('กำลังเช็คเอาท์...', 'success');
+                
+                const result = await callGoogleScriptJSONP('checkout', {
+                    employee: currentEmployee.name,
+                    employeeId: currentEmployee.id,
+                    date: now.toLocaleDateString('en-CA'),
+                    time: timeString,
+                    location: `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`,
+                    workHours: '8.0',
+                    otHours: '0.0',
+                    status: earlyMinutes > 0 ? 'กลับก่อนเวลา' : 'ปกติ',
+                    earlyMinutes: earlyMinutes
+                });
+
+                if (result.success) {
+                    if (earlyMinutes > 0) {
+                        showMessage(`✅ เช็คเอาท์สำเร็จ! (กลับก่อนเวลา ${earlyMinutes} นาที)`, 'warning');
+                    } else {
+                        showMessage('✅ เช็คเอาท์สำเร็จ!', 'success');
+                    }
+                    
+                    document.getElementById('currentStatus').textContent = `สถานะ: เช็คเอาท์แล้ว (${timeString} น.)`;
+                    document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #ffd3a5 0%, #fd9853 100%)';
+                } else {
+                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ', 'danger');
+                console.error('CheckOut error:', error);
+            }
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageArea = document.getElementById('messageArea');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            messageArea.innerHTML = '';
+            messageArea.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

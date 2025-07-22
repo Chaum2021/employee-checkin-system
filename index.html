@@ -532,6 +532,7 @@
         let employees = [];
         let currentEmployee = null;
         let userLocation = null;
+        let requestCounter = 0;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -590,43 +591,53 @@
             checkConfiguration();
         }
 
-        // ใช้ GET method แทน POST เพื่อแก้ปัญหา CORS
-        async function callGoogleScript(action, data = {}) {
-            if (!config.googleScriptUrl) {
-                throw new Error('Google Apps Script URL ไม่ได้กำหนดค่า');
-            }
-
-            // สร้าง URL parameters
-            const params = new URLSearchParams();
-            params.append('action', action);
-            
-            // เพิ่ม data ลงใน parameters
-            for (const key in data) {
-                if (typeof data[key] === 'object') {
-                    params.append(key, JSON.stringify(data[key]));
-                } else {
-                    params.append(key, data[key]);
+        // JSONP function to bypass CORS
+        function callGoogleScriptJSONP(action, data = {}) {
+            return new Promise((resolve, reject) => {
+                if (!config.googleScriptUrl) {
+                    reject(new Error('Google Apps Script URL ไม่ได้กำหนดค่า'));
+                    return;
                 }
-            }
 
-            const url = `${config.googleScriptUrl}?${params.toString()}`;
-            
-            console.log('Calling URL:', url);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json',
+                requestCounter++;
+                const callbackName = `jsonp_callback_${requestCounter}`;
+                
+                // สร้าง parameters
+                const params = new URLSearchParams();
+                params.append('action', action);
+                params.append('callback', callbackName);
+                
+                // เพิ่ม data ลงใน parameters
+                for (const key in data) {
+                    if (typeof data[key] === 'object') {
+                        params.append(key, JSON.stringify(data[key]));
+                    } else {
+                        params.append(key, data[key]);
+                    }
                 }
+
+                const url = `${config.googleScriptUrl}?${params.toString()}`;
+                
+                // สร้าง callback function
+                window[callbackName] = function(response) {
+                    // ลบ script element และ callback function
+                    document.head.removeChild(script);
+                    delete window[callbackName];
+                    
+                    resolve(response);
+                };
+
+                // สร้าง script element สำหรับ JSONP
+                const script = document.createElement('script');
+                script.src = url;
+                script.onerror = function() {
+                    document.head.removeChild(script);
+                    delete window[callbackName];
+                    reject(new Error('Failed to load script'));
+                };
+
+                document.head.appendChild(script);
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            return result;
         }
 
         async function testConnection() {
@@ -638,7 +649,7 @@
             try {
                 showMessage('กำลังทดสอบการเชื่อมต่อ...', 'success');
                 
-                const result = await callGoogleScript('getEmployees');
+                const result = await callGoogleScriptJSONP('getEmployees');
                 
                 if (result.success) {
                     showMessage('เชื่อมต่อสำเร็จ! พบพนักงาน ' + result.data.length + ' คน', 'success');
@@ -658,7 +669,7 @@
             }
 
             try {
-                const result = await callGoogleScript('getEmployees');
+                const result = await callGoogleScriptJSONP('getEmployees');
                 
                 if (result.success) {
                     employees = result.data;
@@ -885,7 +896,7 @@
             try {
                 showMessage('กำลังเช็คอิน...', 'success');
                 
-                const result = await callGoogleScript('checkin', {
+                const result = await callGoogleScriptJSONP('checkin', {
                     employee: currentEmployee.name,
                     employeeId: currentEmployee.id,
                     date: now.toLocaleDateString('en-CA'), // YYYY-MM-DD format
@@ -966,7 +977,7 @@
             try {
                 showMessage('กำลังเช็คเอาท์...', 'success');
                 
-                const result = await callGoogleScript('checkout', {
+                const result = await callGoogleScriptJSONP('checkout', {
                     employee: currentEmployee.name,
                     employeeId: currentEmployee.id,
                     date: now.toLocaleDateString('en-CA'), // YYYY-MM-DD format
@@ -1004,7 +1015,7 @@
             }
 
             try {
-                const result = await callGoogleScript('getDashboardData');
+                const result = await callGoogleScriptJSONP('getDashboardData');
                 
                 if (result.success) {
                     const data = result.data;

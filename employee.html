@@ -331,8 +331,8 @@
                     
                     // แสดงข้อมูลบริษัท
                     document.getElementById('companyName').textContent = config.companyName;
-                    document.getElementById('workStart').textContent = config.workStartTime;
-                    document.getElementById('workEnd').textContent = config.workEndTime;
+                    document.getElementById('workStart').textContent = formatTimeStr(config.workStartTime);
+                    document.getElementById('workEnd').textContent = formatTimeStr(config.workEndTime);
                     document.getElementById('breakTime').textContent = config.breakTime;
                     document.getElementById('companyInfo').style.display = 'block';
                 }
@@ -709,3 +709,9 @@
     </script>
 </body>
 </html>
+
+function formatTimeStr(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return '-';
+    const [hour, minute] = timeStr.split(':');
+    return hour.padStart(2, '0') + ':' + minute.padStart(2, '0');
+}

@@ -513,20 +513,20 @@
     </div>
 
     <script>
-        // แก้ไข: ใช้ in-memory storage แทน localStorage
+        // แก้ไข: ใช้ sessionStorage สำหรับเก็บข้อมูลชั่วคราว
         let config = {
-            googleScriptUrl: '',
-            googleSheetsUrl: '',
-            companyName: 'บริษัท ABC จำกัด',
-            workStartTime: '08:30',
-            workEndTime: '17:30',
-            breakTime: 60,
-            otRate: 100,
-            socialSecurityRate: 5,
-            socialSecurityCap: 750,
-            officeLat: 16.386829,
-            officeLng: 102.831119,
-            allowedRadius: 1000
+            googleScriptUrl: sessionStorage.getItem('googleScriptUrl') || '',
+            googleSheetsUrl: sessionStorage.getItem('googleSheetsUrl') || '',
+            companyName: sessionStorage.getItem('companyName') || 'บริษัท ABC จำกัด',
+            workStartTime: sessionStorage.getItem('workStartTime') || '08:30',
+            workEndTime: sessionStorage.getItem('workEndTime') || '17:30',
+            breakTime: parseInt(sessionStorage.getItem('breakTime')) || 60,
+            otRate: parseFloat(sessionStorage.getItem('otRate')) || 100,
+            socialSecurityRate: parseFloat(sessionStorage.getItem('socialSecurityRate')) || 5,
+            socialSecurityCap: parseFloat(sessionStorage.getItem('socialSecurityCap')) || 750,
+            officeLat: parseFloat(sessionStorage.getItem('officeLat')) || 16.386829,
+            officeLng: parseFloat(sessionStorage.getItem('officeLng')) || 102.831119,
+            allowedRadius: parseInt(sessionStorage.getItem('allowedRadius')) || 1000
         };
 
         let employees = [];
@@ -570,7 +570,7 @@
         }
 
         function saveSettings() {
-            // แก้ไข: เก็บค่าใน memory แทน localStorage
+            // แก้ไข: บันทึกลง sessionStorage
             config.googleScriptUrl = document.getElementById('googleScriptUrl').value.trim();
             config.googleSheetsUrl = document.getElementById('googleSheetsUrl').value.trim();
             config.companyName = document.getElementById('companyName').value;
@@ -583,6 +583,11 @@
             config.officeLat = parseFloat(document.getElementById('officeLat').value);
             config.officeLng = parseFloat(document.getElementById('officeLng').value);
             config.allowedRadius = parseInt(document.getElementById('allowedRadius').value);
+
+            // บันทึกลง sessionStorage
+            for (const key in config) {
+                sessionStorage.setItem(key, config[key]);
+            }
 
             showMessage('บันทึกการตั้งค่าเรียบร้อย', 'success');
             checkConfiguration();
@@ -1245,3 +1250,4 @@
     </script>
 </body>
 </html>
+Commit message: Update with sessionStorage support

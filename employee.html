@@ -156,6 +156,33 @@
             opacity: 0.8;
         }
 
+        .url-input {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeaa7;
+        }
+
+        .url-input input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .url-input button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -184,6 +211,14 @@
         </div>
 
         <div class="main-card">
+            <!-- แก้ไข: เพิ่มส่วนสำหรับใส่ URL -->
+            <div id="urlInput" class="url-input">
+                <h4>⚙️ กำหนดค่าระบบ</h4>
+                <p>กรุณาใส่ Google Apps Script URL:</p>
+                <input type="url" id="googleScriptUrl" placeholder="https://script.google.com/macros/s/[ID]/exec">
+                <button onclick="saveScriptUrl()">บันทึก URL</button>
+            </div>
+
             <h2>เลือกพนักงาน</h2>
             
             <select id="employeeSelect" class="employee-select">
@@ -222,12 +257,12 @@
         </div>
 
         <div class="footer">
-            <p>💡 เฉพาะพนักงานเท่านั้น | สำหรับผู้ดูแลระบบใช้ลิงก์แยกต่างหาก</p>
+            <p>💡 เฉพาะพนักงานเท่านั้น | สำหรับผู้ดูแลระบบใช้หน้าหลัก</p>
         </div>
     </div>
 
     <script>
-        // ตั้งค่าจาก Google Apps Script (จะโหลดมาจาก server)
+        // แก้ไข: ใช้ in-memory storage แทน localStorage
         let config = {
             googleScriptUrl: '',
             companyName: 'กำลังโหลด...',
@@ -247,35 +282,45 @@
         let userLocation = null;
         let requestCounter = 0;
 
-        // ดึง Google Apps Script URL จาก URL parameters
-        function getGoogleScriptUrl() {
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkUrlParameter();
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            checkLocationPermission();
+        });
+
+        // แก้ไข: เพิ่มฟังก์ชันตรวจสอบ URL parameter
+        function checkUrlParameter() {
             const urlParams = new URLSearchParams(window.location.search);
             const scriptUrl = urlParams.get('script');
             
             if (scriptUrl) {
-                // ถอด encoding ถ้ามี
-                return decodeURIComponent(scriptUrl);
-            }
-            
-            // ถ้าไม่มี parameter ให้แสดง error
-            showMessage('❌ ลิงก์ไม่ถูกต้อง กรุณาใช้ลิงก์ที่ผู้ดูแลระบบส่งให้', 'danger');
-            return null;
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            config.googleScriptUrl = getGoogleScriptUrl();
-            
-            if (config.googleScriptUrl) {
+                config.googleScriptUrl = decodeURIComponent(scriptUrl);
+                document.getElementById('googleScriptUrl').value = config.googleScriptUrl;
+                document.getElementById('urlInput').style.display = 'none';
                 loadSystemSettings();
                 loadEmployees();
-                updateCurrentTime();
-                setInterval(updateCurrentTime, 1000);
-                checkLocationPermission();
+            } else {
+                document.getElementById('urlInput').style.display = 'block';
             }
-        });
+        }
 
-        // โหลดการตั้งค่าระบบจาก Google Apps Script
+        function saveScriptUrl() {
+            const url = document.getElementById('googleScriptUrl').value.trim();
+            if (!url) {
+                showMessage('กรุณาใส่ Google Apps Script URL', 'warning');
+                return;
+            }
+
+            config.googleScriptUrl = url;
+            document.getElementById('urlInput').style.display = 'none';
+            showMessage('บันทึก URL เรียบร้อย', 'success');
+            
+            loadSystemSettings();
+            loadEmployees();
+        }
+
         async function loadSystemSettings() {
             try {
                 const result = await callGoogleScriptJSONP('getSettings');

@@ -391,6 +391,14 @@
             });
         }
 
+        
+        function formatTimeStr(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return '-';
+            const [hour, minute] = timeStr.split(':');
+            return hour.padStart(2, '0') + ':' + minute.padStart(2, '0');
+        }
+
+
         async function loadEmployees() {
             try {
                 const result = await callGoogleScriptJSONP('getEmployees');
@@ -710,8 +718,3 @@
 </body>
 </html>
 
-function formatTimeStr(timeStr) {
-    if (!timeStr || typeof timeStr !== 'string') return '-';
-    const [hour, minute] = timeStr.split(':');
-    return hour.padStart(2, '0') + ':' + minute.padStart(2, '0');
-}

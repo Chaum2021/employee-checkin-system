@@ -513,20 +513,20 @@
     </div>
 
     <script>
-        // Configuration
+        // แก้ไข: ใช้ in-memory storage แทน localStorage
         let config = {
-            googleScriptUrl: localStorage.getItem('googleScriptUrl') || '',
-            googleSheetsUrl: localStorage.getItem('googleSheetsUrl') || '',
-            companyName: localStorage.getItem('companyName') || 'บริษัท ABC จำกัด',
-            workStartTime: localStorage.getItem('workStartTime') || '08:30',
-            workEndTime: localStorage.getItem('workEndTime') || '17:30',
-            breakTime: parseInt(localStorage.getItem('breakTime')) || 60,
-            otRate: parseFloat(localStorage.getItem('otRate')) || 100,
-            socialSecurityRate: parseFloat(localStorage.getItem('socialSecurityRate')) || 5,
-            socialSecurityCap: parseFloat(localStorage.getItem('socialSecurityCap')) || 750,
-            officeLat: parseFloat(localStorage.getItem('officeLat')) || 16.386829,
-            officeLng: parseFloat(localStorage.getItem('officeLng')) || 102.831119,
-            allowedRadius: parseInt(localStorage.getItem('allowedRadius')) || 1000
+            googleScriptUrl: '',
+            googleSheetsUrl: '',
+            companyName: 'บริษัท ABC จำกัด',
+            workStartTime: '08:30',
+            workEndTime: '17:30',
+            breakTime: 60,
+            otRate: 100,
+            socialSecurityRate: 5,
+            socialSecurityCap: 750,
+            officeLat: 16.386829,
+            officeLng: 102.831119,
+            allowedRadius: 1000
         };
 
         let employees = [];
@@ -554,6 +554,7 @@
         }
 
         function loadSettings() {
+            // โหลดค่าที่ตั้งไว้ในฟอร์ม
             document.getElementById('googleScriptUrl').value = config.googleScriptUrl;
             document.getElementById('googleSheetsUrl').value = config.googleSheetsUrl;
             document.getElementById('companyName').value = config.companyName;
@@ -569,6 +570,7 @@
         }
 
         function saveSettings() {
+            // แก้ไข: เก็บค่าใน memory แทน localStorage
             config.googleScriptUrl = document.getElementById('googleScriptUrl').value.trim();
             config.googleSheetsUrl = document.getElementById('googleSheetsUrl').value.trim();
             config.companyName = document.getElementById('companyName').value;
@@ -581,11 +583,6 @@
             config.officeLat = parseFloat(document.getElementById('officeLat').value);
             config.officeLng = parseFloat(document.getElementById('officeLng').value);
             config.allowedRadius = parseInt(document.getElementById('allowedRadius').value);
-
-            // Save to localStorage
-            for (const key in config) {
-                localStorage.setItem(key, config[key]);
-            }
 
             showMessage('บันทึกการตั้งค่าเรียบร้อย', 'success');
             checkConfiguration();
@@ -665,6 +662,13 @@
 
         async function loadEmployees() {
             if (!config.googleScriptUrl) {
+                // ใช้ข้อมูล mock สำหรับทดสอบ
+                employees = [
+                    {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'},
+                    {id: 'EMP002', name: 'สมหญิง ขยัน', salary: 18000, position: 'หัวหน้างาน', status: 'ปฏิบัติงาน'},
+                    {id: 'EMP003', name: 'วิทยา ศรีวิชา', salary: 20000, position: 'ผู้จัดการ', status: 'ปฏิบัติงาน'}
+                ];
+                updateEmployeeSelects();
                 return;
             }
 
@@ -674,12 +678,18 @@
                 if (result.success) {
                     employees = result.data;
                     updateEmployeeSelects();
+                } else {
+                    // ใช้ข้อมูล fallback
+                    employees = [
+                        {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'}
+                    ];
+                    updateEmployeeSelects();
                 }
             } catch (error) {
                 console.error('Error loading employees:', error);
-                // Use fallback data if API fails
+                // ใช้ข้อมูล fallback
                 employees = [
-                    {id: 'EMP001', name: 'วิทยา ศรีวิชา', salary: 15000}
+                    {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'}
                 ];
                 updateEmployeeSelects();
             }
@@ -690,14 +700,16 @@
             
             selects.forEach(selectId => {
                 const select = document.getElementById(selectId);
-                select.innerHTML = '<option value="">เลือกพนักงาน</option>';
-                
-                employees.forEach(emp => {
-                    const option = document.createElement('option');
-                    option.value = emp.id;
-                    option.textContent = `${emp.name} (${emp.id})`;
-                    select.appendChild(option);
-                });
+                if (select) {
+                    select.innerHTML = '<option value="">เลือกพนักงาน</option>';
+                    
+                    employees.forEach(emp => {
+                        const option = document.createElement('option');
+                        option.value = emp.id;
+                        option.textContent = `${emp.name} (${emp.id})`;
+                        select.appendChild(option);
+                    });
+                }
             });
         }
 
@@ -908,19 +920,19 @@
 
                 if (result.success) {
                     if (lateMinutes > 0) {
-                        showMessage(`เช็คอินสำเร็จ! (สาย ${lateMinutes} นาที)`, 'warning');
+                        showMessage(`✅ เช็คอินสำเร็จ! (สาย ${lateMinutes} นาที)`, 'warning');
                     } else {
-                        showMessage('เช็คอินสำเร็จ!', 'success');
+                        showMessage('✅ เช็คอินสำเร็จ!', 'success');
                     }
                     
                     // Update UI
                     document.getElementById('currentStatus').textContent = `สถานะ: เช็คอินแล้ว (${timeString} น.)`;
                     document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%)';
                 } else {
-                    showMessage('เกิดข้อผิดพลาด: ' + result.error, 'danger');
+                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
                 }
             } catch (error) {
-                showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
+                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
                 console.error('CheckIn error:', error);
             }
 
@@ -991,19 +1003,19 @@
 
                 if (result.success) {
                     if (earlyMinutes > 0) {
-                        showMessage(`เช็คเอาท์สำเร็จ! (กลับก่อนเวลา ${earlyMinutes} นาที)`, 'warning');
+                        showMessage(`✅ เช็คเอาท์สำเร็จ! (กลับก่อนเวลา ${earlyMinutes} นาที)`, 'warning');
                     } else {
-                        showMessage('เช็คเอาท์สำเร็จ!', 'success');
+                        showMessage('✅ เช็คเอาท์สำเร็จ!', 'success');
                     }
                     
                     // Update UI
                     document.getElementById('currentStatus').textContent = `สถานะ: เช็คเอาท์แล้ว (${timeString} น.)`;
                     document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #ffd3a5 0%, #fd9853 100%)';
                 } else {
-                    showMessage('เกิดข้อผิดพลาด: ' + result.error, 'danger');
+                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
                 }
             } catch (error) {
-                showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
+                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
                 console.error('CheckOut error:', error);
             }
         }
@@ -1011,6 +1023,9 @@
         async function loadDashboardData() {
             if (!config.googleScriptUrl) {
                 document.getElementById('todayStats').innerHTML = '<p style="color: #dc3545;">กรุณากำหนดค่า Google Apps Script URL</p>';
+                document.getElementById('lateEmployees').innerHTML = '<p style="color: #dc3545;">กรุณากำหนดค่า Google Apps Script URL</p>';
+                document.getElementById('earlyEmployees').innerHTML = '<p style="color: #dc3545;">กรุณากำหนดค่า Google Apps Script URL</p>';
+                updateSalaryStats();
                 return;
             }
 
@@ -1062,29 +1077,41 @@
                     
                 } else {
                     document.getElementById('todayStats').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
+                    document.getElementById('lateEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
+                    document.getElementById('earlyEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
                 }
             } catch (error) {
                 document.getElementById('todayStats').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+                document.getElementById('lateEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
+                document.getElementById('earlyEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
                 console.error('Dashboard error:', error);
             }
             
-            // Mock salary stats for now
+            updateSalaryStats();
+        }
+
+        function updateSalaryStats() {
+            // Mock salary stats calculation
+            const totalSalary = employees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
+            const estimatedOT = 5000; // ประมาณการ
+            const socialSecurity = 750; // ประมาณการ
+            
             document.getElementById('salaryStats').innerHTML = `
                 <div class="summary-item">
                     <span>เงินเดือนรวม:</span>
-                    <span class="summary-value">${(employees.reduce((sum, emp) => sum + (emp.salary || 0), 0)).toLocaleString()} บาท</span>
+                    <span class="summary-value">${totalSalary.toLocaleString()} บาท</span>
                 </div>
                 <div class="summary-item">
                     <span>OT รวม (ประมาณ):</span>
-                    <span class="summary-value">5,000 บาท</span>
+                    <span class="summary-value">${estimatedOT.toLocaleString()} บาท</span>
                 </div>
                 <div class="summary-item">
                     <span>ประกันสังคม:</span>
-                    <span class="summary-value">-750 บาท</span>
+                    <span class="summary-value">-${socialSecurity.toLocaleString()} บาท</span>
                 </div>
                 <div class="summary-item">
                     <span>สุทธิ (ประมาณ):</span>
-                    <span class="summary-value" style="color: #28a745;">${(employees.reduce((sum, emp) => sum + (emp.salary || 0), 0) + 5000 - 750).toLocaleString()} บาท</span>
+                    <span class="summary-value" style="color: #28a745;">${(totalSalary + estimatedOT - socialSecurity).toLocaleString()} บาท</span>
                 </div>
             `;
         }

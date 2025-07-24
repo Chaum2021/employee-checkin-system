@@ -40,7 +40,7 @@
   <h1>🧑‍💼 หน้าผู้ดูแลระบบ - ข้อมูลพนักงาน</h1>
 
   <button onclick="loadData('employees')">📋 รายชื่อพนักงาน</button>
-  <button onclick="loadData('checkin')">🕐 เช็คอิน/เอาท์</button>
+  <button onclick="loadData('checkin')">🕐 เช็คอิน/เช็คเอาท์</button>
   <button onclick="loadData('summary')">💰 สรุปเงินเดือน</button>
 
   <div id="status">📢 กรุณาเลือกประเภทข้อมูล</div>
@@ -51,7 +51,7 @@
   </table>
 
   <script>
-    const API_URL = 'https://script.google.com/macros/s/PASTE_WEB_APP_URL_HERE/exec'; // 👈 แก้เป็น Web App URL จริง
+    const API_URL = 'https://script.google.com/macros/s/PASTE_WEB_APP_URL_HERE/exec'; // 👈 เปลี่ยนเป็น Web App URL จริงของเจ้านาย
 
     function clearTable() {
       document.getElementById('tableHead').innerHTML = '';
@@ -59,6 +59,7 @@
     }
 
     async function loadData(mode) {
+      localStorage.setItem('lastMode', mode); // ✅ จดจำโหมดล่าสุด
       clearTable();
       document.getElementById('status').innerText = '⏳ กำลังโหลดข้อมูล...';
 
@@ -78,12 +79,12 @@
           return;
         }
 
-        // สร้างหัวตาราง
+        // หัวตาราง
         const headers = Object.keys(data[0]);
         const theadHTML = headers.map(h => `<th>${h}</th>`).join('');
         document.getElementById('tableHead').innerHTML = `<tr>${theadHTML}</tr>`;
 
-        // สร้างข้อมูลตาราง
+        // ข้อมูล
         const tbodyHTML = data.map(row => {
           return `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`;
         }).join('');
@@ -94,6 +95,14 @@
         console.error(err);
       }
     }
+
+    // ✅ โหลดโหมดล่าสุดจาก localStorage ทันทีเมื่อเปิดหน้าเว็บ
+    document.addEventListener('DOMContentLoaded', () => {
+      const lastMode = localStorage.getItem('lastMode');
+      if (lastMode) {
+        loadData(lastMode);
+      }
+    });
   </script>
 </body>
 </html>

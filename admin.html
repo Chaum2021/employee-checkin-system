@@ -423,6 +423,7 @@
                     </div>
                     <button class="btn" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button>
                     <button class="btn" onclick="saveSettings()" style="margin-left: 10px;">💾 บันทึกการตั้งค่า</button>
+                    <button class="btn" onclick="testMemory()" style="margin-left: 10px;">🧪 ทดสอบการจำค่า</button>
                 </div>
 
                 <div class="admin-card">
@@ -489,35 +490,97 @@
 
         // เริ่มต้นระบบ
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 กำลังเริ่มต้นระบบ...');
             loadStoredSettings();
             checkUrlParameters();
             updateCurrentTime();
             setInterval(updateCurrentTime, 1000);
             checkLocationPermission();
-            loadEmployees();
+            
+            // ตรวจสอบว่ามี Google Script URL ไหม
+            if (config.googleScriptUrl) {
+                console.log('✅ พบ Google Script URL:', config.googleScriptUrl);
+                updateSystemStatus('success', '✅ พบการตั้งค่าที่บันทึกไว้');
+                loadEmployees();
+            } else {
+                console.log('⚠️ ไม่พบ Google Script URL');
+                updateSystemStatus('warning', '⚠️ กรุณาตั้งค่า Google Apps Script URL ในแท็บตั้งค่า');
+                // ใช้ข้อมูลตัวอย่าง
+                employees = [
+                    {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'},
+                    {id: 'EMP002', name: 'สมหญิง ขยัน', salary: 18000, position: 'หัวหน้างาน', status: 'ปฏิบัติงาน'},
+                    {id: 'EMP003', name: 'วิทยา ศรีวิชา', salary: 20000, position: 'ผู้จัดการ', status: 'ปฏิบัติงาน'}
+                ];
+                updateEmployeeSelects();
+            }
         });
 
         // บันทึกและโหลดการตั้งค่า
         function saveStoredSettings() {
             try {
+                // บันทึกทั้ง localStorage และ cookie เพื่อความแน่ใจ
                 localStorage.setItem('employeeSystemConfig', JSON.stringify(config));
-                console.log('✅ บันทึกการตั้งค่าสำเร็จ');
+                
+                // บันทึกใน cookie ด้วย (สำรอง)
+                const expires = new Date();
+                expires.setFullYear(expires.getFullYear() + 1); // 1 ปี
+                document.cookie = `employeeSystemConfig=${encodeURIComponent(JSON.stringify(config))}; expires=${expires.toUTCString()}; path=/`;
+                
+                console.log('✅ บันทึกการตั้งค่าสำเร็จ (localStorage + cookie)');
+                return true;
             } catch (error) {
                 console.log('⚠️ ไม่สามารถบันทึกการตั้งค่าได้:', error);
+                return false;
             }
         }
 
         function loadStoredSettings() {
             try {
-                const stored = localStorage.getItem('employeeSystemConfig');
-                if (stored) {
-                    const storedConfig = JSON.parse(stored);
-                    Object.assign(config, storedConfig);
-                    console.log('✅ โหลดการตั้งค่าจาก localStorage สำเร็จ');
-                    updateUIWithSettings();
+                let loaded = false;
+                
+                // ลอง localStorage ก่อน
+                try {
+                    const stored = localStorage.getItem('employeeSystemConfig');
+                    if (stored) {
+                        const storedConfig = JSON.parse(stored);
+                        Object.assign(config, storedConfig);
+                        console.log('✅ โหลดการตั้งค่าจาก localStorage สำเร็จ');
+                        loaded = true;
+                    }
+                } catch (e) {
+                    console.log('⚠️ localStorage ไม่พร้อมใช้งาน');
                 }
+                
+                // ถ้า localStorage ไม่ได้ ให้ลองจาก cookie
+                if (!loaded) {
+                    try {
+                        const cookies = document.cookie.split(';');
+                        for (let cookie of cookies) {
+                            const [name, value] = cookie.trim().split('=');
+                            if (name === 'employeeSystemConfig') {
+                                const storedConfig = JSON.parse(decodeURIComponent(value));
+                                Object.assign(config, storedConfig);
+                                console.log('✅ โหลดการตั้งค่าจาก cookie สำเร็จ');
+                                loaded = true;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('⚠️ cookie ไม่พร้อมใช้งาน');
+                    }
+                }
+                
+                if (loaded) {
+                    updateUIWithSettings();
+                    return true;
+                } else {
+                    console.log('📝 ไม่พบการตั้งค่าที่บันทึกไว้');
+                    return false;
+                }
+                
             } catch (error) {
                 console.log('⚠️ ไม่สามารถโหลดการตั้งค่าได้:', error);
+                return false;
             }
         }
 
@@ -527,37 +590,36 @@
             
             if (scriptUrl) {
                 config.googleScriptUrl = decodeURIComponent(scriptUrl);
+                console.log('🔗 โหลด Google Script URL จาก URL parameter:', config.googleScriptUrl);
                 updateUIWithSettings();
                 saveStoredSettings();
-                showMessage('✅ โหลดการตั้งค่าจาก URL สำเร็จ', 'success');
+                showMessage('✅ โหลดการตั้งค่าจาก URL สำเร็จ และบันทึกถาวรแล้ว', 'success');
             }
         }
 
         function updateUIWithSettings() {
-            if (document.getElementById('googleScriptUrl')) {
-                document.getElementById('googleScriptUrl').value = config.googleScriptUrl || '';
-            }
-            if (document.getElementById('googleSheetsUrl')) {
-                document.getElementById('googleSheetsUrl').value = config.googleSheetsUrl || '';
-            }
-            if (document.getElementById('companyName')) {
-                document.getElementById('companyName').value = config.companyName || '';
-            }
-            if (document.getElementById('workStartTime')) {
-                document.getElementById('workStartTime').value = config.workStartTime || '';
-            }
-            if (document.getElementById('workEndTime')) {
-                document.getElementById('workEndTime').value = config.workEndTime || '';
-            }
-            if (document.getElementById('officeLat')) {
-                document.getElementById('officeLat').value = config.officeLat || '';
-            }
-            if (document.getElementById('officeLng')) {
-                document.getElementById('officeLng').value = config.officeLng || '';
-            }
-            if (document.getElementById('allowedRadius')) {
-                document.getElementById('allowedRadius').value = config.allowedRadius || '';
-            }
+            console.log('🔄 กำลังอัปเดต UI ด้วยการตั้งค่า...');
+            
+            // อัปเดตฟิลด์ต่างๆ อย่างปลอดภัย
+            const fields = [
+                {id: 'googleScriptUrl', value: config.googleScriptUrl || ''},
+                {id: 'googleSheetsUrl', value: config.googleSheetsUrl || ''},
+                {id: 'companyName', value: config.companyName || ''},
+                {id: 'workStartTime', value: config.workStartTime || ''},
+                {id: 'workEndTime', value: config.workEndTime || ''},
+                {id: 'officeLat', value: config.officeLat || ''},
+                {id: 'officeLng', value: config.officeLng || ''},
+                {id: 'allowedRadius', value: config.allowedRadius || ''}
+            ];
+            
+            fields.forEach(field => {
+                const element = document.getElementById(field.id);
+                if (element) {
+                    element.value = field.value;
+                }
+            });
+            
+            console.log('✅ อัปเดต UI เสร็จสิ้น');
         }
 
         // JSONP function เพื่อแก้ปัญหา CORS

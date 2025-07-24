@@ -237,6 +237,25 @@
             border: 1px solid #ffeaa7;
         }
 
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
         .loading {
             display: inline-block;
             width: 20px;
@@ -279,16 +298,15 @@
         </div>
 
         <!-- Ready Alert -->
-        <div class="ready-alert">
-            ✅ <strong>ระบบพร้อมใช้งาน!</strong> 
-            เชื่อมต่อ Google Apps Script เรียบร้อยแล้ว
+        <div class="ready-alert" id="systemStatus">
+            <span id="statusIcon">⚙️</span> <strong id="statusText">กำลังตรวจสอบระบบ...</strong>
         </div>
 
         <div class="nav-tabs">
             <div class="nav-tab active" onclick="showTab('checkin')">📱 เช็คอิน/เอาท์</div>
             <div class="nav-tab" onclick="showTab('admin')">📊 แดชบอร์ด</div>
             <div class="nav-tab" onclick="showTab('reports')">📈 รายงาน</div>
-            <div class="nav-tab" onclick="showTab('info')">ℹ️ ข้อมูลระบบ</div>
+            <div class="nav-tab" onclick="showTab('settings')">⚙️ ตั้งค่า</div>
         </div>
 
         <!-- Check-in/out Tab -->
@@ -387,32 +405,70 @@
             <div id="reportResult" style="margin-top: 30px;"></div>
         </div>
 
-        <!-- Info Tab -->
-        <div id="info" class="tab-content">
-            <h2>ℹ️ ข้อมูลระบบ</h2>
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <h2>⚙️ ตั้งค่าระบบ</h2>
             
             <div class="admin-section">
                 <div class="admin-card">
-                    <h3>🔗 การเชื่อมต่อ</h3>
-                    <p><strong>สถานะ:</strong> ✅ เชื่อมต่อแล้ว</p>
-                    <p><strong>Google Apps Script:</strong> กำหนดค่าแล้ว</p>
-                    <p><strong>Google Sheets:</strong> พร้อมใช้งาน</p>
+                    <h3>🔗 การเชื่อมต่อ Google Sheets</h3>
+                    <div class="form-group">
+                        <label>Google Apps Script URL:</label>
+                        <textarea id="googleScriptUrl" placeholder="วางURL ของ Google Apps Script ที่นี่" rows="3"></textarea>
+                        <small style="color: #666;">URL จะเป็นแบบ: https://script.google.com/macros/s/[ID]/exec</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Google Sheets URL (สำหรับดูข้อมูล):</label>
+                        <input type="url" id="googleSheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/[ID]/edit">
+                    </div>
+                    <button class="btn" onclick="testConnection()">ทดสอบการเชื่อมต่อ</button>
+                    <button class="btn" onclick="saveSettings()" style="margin-left: 10px;">💾 บันทึกการตั้งค่า</button>
                 </div>
 
                 <div class="admin-card">
-                    <h3>📱 ลิงก์สำหรับพนักงาน</h3>
-                    <p>ส่งลิงก์นี้ให้พนักงาน:</p>
-                    <input type="text" readonly value="https://chaum2021.github.io/employee-checkin-system/employee.html?script=https%3A//script.google.com/macros/s/AKfycbwpy9Q7bpm-b2ERNGZGhxhFfkqfWhiPJR7GcFUrz_HZBTRXsv8VDWPlfJ3mojV0-TgZ/exec" style="width: 100%; padding: 10px; margin: 10px 0;">
-                    <button class="btn" onclick="copyEmployeeLink()">📋 คัดลอกลิงก์</button>
+                    <h3>🏢 ตั้งค่าบริษัท</h3>
+                    <div class="form-group">
+                        <label>ชื่อบริษัท:</label>
+                        <input type="text" id="companyName" value="บริษัท ABC จำกัด">
+                    </div>
+                    <div class="form-group">
+                        <label>เวลาเข้างาน:</label>
+                        <input type="time" id="workStartTime" value="08:30">
+                    </div>
+                    <div class="form-group">
+                        <label>เวลาเลิกงาน:</label>
+                        <input type="time" id="workEndTime" value="17:30">
+                    </div>
+                    <div class="form-group">
+                        <label>เวลาพักเบรค (นาที):</label>
+                        <input type="number" id="breakTime" value="60">
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <h3>📍 ตั้งค่าตำแหน่งออฟฟิศ</h3>
+                    <div class="form-group">
+                        <label>Latitude:</label>
+                        <input type="number" id="officeLat" value="16.386829" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude:</label>
+                        <input type="number" id="officeLng" value="102.831119" step="0.0001">
+                    </div>
+                    <div class="form-group">
+                        <label>รัศมีที่อนุญาต (เมตร):</label>
+                        <input type="number" id="allowedRadius" value="100">
+                    </div>
+                    <button class="btn" onclick="getCurrentLocation()">ใช้ตำแหน่งปัจจุบัน</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ตั้งค่า Google Apps Script URL แบบฝังไว้
+        // กำหนดค่าเริ่มต้น
         let config = {
-            googleScriptUrl: 'https://script.google.com/macros/s/AKfycbwpy9Q7bpm-b2ERNGZGhxhFfkqfWhiPJR7GcFUrz_HZBTRXsv8VDWPlfJ3mojV0-TgZ/exec',
+            googleScriptUrl: '',
             googleSheetsUrl: '',
             companyName: 'บริษัท ABC จำกัด',
             workStartTime: '08:30',
@@ -423,7 +479,7 @@
             socialSecurityCap: 750,
             officeLat: 16.386829,
             officeLng: 102.831119,
-            allowedRadius: 1000
+            allowedRadius: 100
         };
 
         let employees = [];
@@ -431,20 +487,84 @@
         let userLocation = null;
         let requestCounter = 0;
 
-        // Initialize
+        // เริ่มต้นระบบ
         document.addEventListener('DOMContentLoaded', function() {
-            loadSystemSettings();
+            loadStoredSettings();
+            checkUrlParameters();
             updateCurrentTime();
             setInterval(updateCurrentTime, 1000);
             checkLocationPermission();
             loadEmployees();
         });
 
-        // JSONP function to bypass CORS
+        // บันทึกและโหลดการตั้งค่า
+        function saveStoredSettings() {
+            try {
+                localStorage.setItem('employeeSystemConfig', JSON.stringify(config));
+                console.log('✅ บันทึกการตั้งค่าสำเร็จ');
+            } catch (error) {
+                console.log('⚠️ ไม่สามารถบันทึกการตั้งค่าได้:', error);
+            }
+        }
+
+        function loadStoredSettings() {
+            try {
+                const stored = localStorage.getItem('employeeSystemConfig');
+                if (stored) {
+                    const storedConfig = JSON.parse(stored);
+                    Object.assign(config, storedConfig);
+                    console.log('✅ โหลดการตั้งค่าจาก localStorage สำเร็จ');
+                    updateUIWithSettings();
+                }
+            } catch (error) {
+                console.log('⚠️ ไม่สามารถโหลดการตั้งค่าได้:', error);
+            }
+        }
+
+        function checkUrlParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const scriptUrl = urlParams.get('script');
+            
+            if (scriptUrl) {
+                config.googleScriptUrl = decodeURIComponent(scriptUrl);
+                updateUIWithSettings();
+                saveStoredSettings();
+                showMessage('✅ โหลดการตั้งค่าจาก URL สำเร็จ', 'success');
+            }
+        }
+
+        function updateUIWithSettings() {
+            if (document.getElementById('googleScriptUrl')) {
+                document.getElementById('googleScriptUrl').value = config.googleScriptUrl || '';
+            }
+            if (document.getElementById('googleSheetsUrl')) {
+                document.getElementById('googleSheetsUrl').value = config.googleSheetsUrl || '';
+            }
+            if (document.getElementById('companyName')) {
+                document.getElementById('companyName').value = config.companyName || '';
+            }
+            if (document.getElementById('workStartTime')) {
+                document.getElementById('workStartTime').value = config.workStartTime || '';
+            }
+            if (document.getElementById('workEndTime')) {
+                document.getElementById('workEndTime').value = config.workEndTime || '';
+            }
+            if (document.getElementById('officeLat')) {
+                document.getElementById('officeLat').value = config.officeLat || '';
+            }
+            if (document.getElementById('officeLng')) {
+                document.getElementById('officeLng').value = config.officeLng || '';
+            }
+            if (document.getElementById('allowedRadius')) {
+                document.getElementById('allowedRadius').value = config.allowedRadius || '';
+            }
+        }
+
+        // JSONP function เพื่อแก้ปัญหา CORS
         function callGoogleScriptJSONP(action, data = {}) {
             return new Promise((resolve, reject) => {
                 if (!config.googleScriptUrl) {
-                    reject(new Error('Google Apps Script URL ไม่ได้กำหนดค่า'));
+                    reject(new Error('กรุณาตั้งค่า Google Apps Script URL ก่อน'));
                     return;
                 }
 
@@ -476,44 +596,57 @@
                 script.onerror = function() {
                     document.head.removeChild(script);
                     delete window[callbackName];
-                    reject(new Error('Failed to load script'));
+                    reject(new Error('การเชื่อมต่อล้มเหลว'));
                 };
+
+                setTimeout(() => {
+                    if (window[callbackName]) {
+                        document.head.removeChild(script);
+                        delete window[callbackName];
+                        reject(new Error('หมดเวลารอการตอบกลับ'));
+                    }
+                }, 30000);
 
                 document.head.appendChild(script);
             });
         }
 
-        async function loadSystemSettings() {
-            try {
-                const result = await callGoogleScriptJSONP('getSettings');
-                if (result.success && result.data) {
-                    Object.assign(config, result.data);
-                }
-            } catch (error) {
-                console.error('Failed to load system settings:', error);
-            }
-        }
-
+        // โหลดข้อมูลพนักงาน
         async function loadEmployees() {
+            const employeeSelect = document.getElementById('employeeSelect');
+            const reportEmployeeSelect = document.getElementById('reportEmployee');
+            
             try {
+                if (!config.googleScriptUrl) {
+                    // ใช้ข้อมูลตัวอย่าง
+                    employees = [
+                        {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'},
+                        {id: 'EMP002', name: 'สมหญิง ขยัน', salary: 18000, position: 'หัวหน้างาน', status: 'ปฏิบัติงาน'},
+                        {id: 'EMP003', name: 'วิทยา ศรีวิชา', salary: 20000, position: 'ผู้จัดการ', status: 'ปฏิบัติงาน'}
+                    ];
+                    updateEmployeeSelects();
+                    updateSystemStatus('warning', '⚠️ ใช้ข้อมูลตัวอย่าง (ยังไม่ได้เชื่อมต่อ Google Sheets)');
+                    return;
+                }
+
+                employeeSelect.innerHTML = '<option value="">กำลังโหลดข้อมูลพนักงาน...</option>';
+                updateSystemStatus('info', '🔄 กำลังโหลดข้อมูลพนักงาน...');
+                
                 const result = await callGoogleScriptJSONP('getEmployees');
                 
                 if (result.success) {
                     employees = result.data;
                     updateEmployeeSelects();
+                    updateSystemStatus('success', `✅ เชื่อมต่อสำเร็จ! พบพนักงาน ${employees.length} คน`);
+                    showMessage(`โหลดข้อมูลพนักงาน ${employees.length} คน สำเร็จ`, 'success');
                 } else {
-                    employees = [
-                        {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'},
-                        {id: 'EMP002', name: 'สมหญิง ขยัน', salary: 18000, position: 'หัวหน้างาน', status: 'ปฏิบัติงาน'}
-                    ];
-                    updateEmployeeSelects();
+                    throw new Error(result.error || 'ไม่สามารถโหลดข้อมูลได้');
                 }
             } catch (error) {
                 console.error('Error loading employees:', error);
-                employees = [
-                    {id: 'EMP001', name: 'สมชาย ใจดี', salary: 15000, position: 'พนักงาน', status: 'ปฏิบัติงาน'}
-                ];
-                updateEmployeeSelects();
+                employeeSelect.innerHTML = '<option value="">⚠️ เกิดข้อผิดพลาดในการโหลดข้อมูล</option>';
+                updateSystemStatus('error', '❌ เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                showMessage('ไม่สามารถโหลดข้อมูลพนักงานได้: ' + error.message, 'danger');
             }
         }
 
@@ -535,6 +668,39 @@
             });
         }
 
+        function updateSystemStatus(type, message) {
+            const statusIcon = document.getElementById('statusIcon');
+            const statusText = document.getElementById('statusText');
+            const systemStatus = document.getElementById('systemStatus');
+            
+            statusText.textContent = message;
+            
+            systemStatus.className = 'ready-alert';
+            switch(type) {
+                case 'success':
+                    statusIcon.textContent = '✅';
+                    systemStatus.style.background = '#d4edda';
+                    systemStatus.style.color = '#155724';
+                    break;
+                case 'warning':
+                    statusIcon.textContent = '⚠️';
+                    systemStatus.style.background = '#fff3cd';
+                    systemStatus.style.color = '#856404';
+                    break;
+                case 'error':
+                    statusIcon.textContent = '❌';
+                    systemStatus.style.background = '#f8d7da';
+                    systemStatus.style.color = '#721c24';
+                    break;
+                case 'info':
+                    statusIcon.textContent = '🔄';
+                    systemStatus.style.background = '#d1ecf1';
+                    systemStatus.style.color = '#0c5460';
+                    break;
+            }
+        }
+
+        // การจัดการ Tab
         function showTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -552,6 +718,7 @@
             }
         }
 
+        // อัปเดตเวลาปัจจุบัน
         function updateCurrentTime() {
             const now = new Date();
             const timeString = now.toLocaleString('th-TH', {
@@ -570,6 +737,7 @@
             }
         }
 
+        // จัดการการเลือกพนักงาน
         document.getElementById('employeeSelect').addEventListener('change', function() {
             const employeeId = this.value;
             if (employeeId) {
@@ -595,424 +763,3 @@
             employeeName.textContent = currentEmployee.name;
             currentStatus.textContent = 'สถานะ: พร้อมเช็คอิน';
         }
-
-        function hideEmployeeStatus() {
-            document.getElementById('statusCard').style.display = 'none';
-            document.getElementById('locationInfo').style.display = 'none';
-        }
-
-        function updateButtons() {
-            const checkinBtn = document.getElementById('checkinBtn');
-            const checkoutBtn = document.getElementById('checkoutBtn');
-            
-            if (currentEmployee && config.googleScriptUrl) {
-                checkinBtn.disabled = false;
-                checkoutBtn.disabled = false;
-            } else {
-                checkinBtn.disabled = true;
-                checkoutBtn.disabled = true;
-            }
-        }
-
-        async function checkLocationPermission() {
-            if ('geolocation' in navigator) {
-                try {
-                    const position = await getCurrentPosition();
-                    userLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    updateLocationInfo();
-                } catch (error) {
-                    showMessage('ไม่สามารถเข้าถึงตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง', 'warning');
-                }
-            }
-        }
-
-        function getCurrentPosition() {
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                });
-            });
-        }
-
-        function updateLocationInfo() {
-            const locationInfo = document.getElementById('locationInfo');
-            const locationText = document.getElementById('locationText');
-            const locationStatus = document.getElementById('locationStatus');
-            
-            if (userLocation && currentEmployee) {
-                locationInfo.style.display = 'block';
-                locationText.textContent = `Lat: ${userLocation.lat.toFixed(6)}, Lng: ${userLocation.lng.toFixed(6)}`;
-                
-                const distance = calculateDistance(
-                    userLocation.lat, userLocation.lng,
-                    config.officeLat, config.officeLng
-                );
-                
-                if (distance <= config.allowedRadius) {
-                    locationStatus.innerHTML = '✅ อยู่ในพื้นที่ที่อนุญาต';
-                    locationStatus.style.color = '#28a745';
-                } else {
-                    locationStatus.innerHTML = `❌ อยู่นอกพื้นที่ (ห่าง ${Math.round(distance)} เมตร)`;
-                    locationStatus.style.color = '#dc3545';
-                }
-            }
-        }
-
-        function calculateDistance(lat1, lng1, lat2, lng2) {
-            const R = 6371000;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                    Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
-        async function checkIn() {
-            if (!currentEmployee) {
-                showMessage('กรุณาเลือกพนักงาน', 'warning');
-                return;
-            }
-
-            try {
-                const position = await getCurrentPosition();
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-
-                const distance = calculateDistance(
-                    userLocation.lat, userLocation.lng,
-                    config.officeLat, config.officeLng
-                );
-
-                if (distance > config.allowedRadius) {
-                    showMessage(`ไม่สามารถเช็คอินได้ คุณอยู่นอกพื้นที่ที่กำหนด (ห่าง ${Math.round(distance)} เมตร)`, 'danger');
-                    return;
-                }
-            } catch (error) {
-                showMessage('ไม่สามารถตรวจสอบตำแหน่งได้ กรุณาเปิด GPS', 'danger');
-                return;
-            }
-
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-
-            const checkInTime = now.getHours() * 60 + now.getMinutes();
-            const startTime = parseInt(config.workStartTime.split(':')[0]) * 60 + 
-                            parseInt(config.workStartTime.split(':')[1]);
-
-            const lateMinutes = checkInTime > startTime ? checkInTime - startTime : 0;
-
-            try {
-                showMessage('กำลังเช็คอิน...', 'success');
-                
-                const result = await callGoogleScriptJSONP('checkin', {
-                    employee: currentEmployee.name,
-                    employeeId: currentEmployee.id,
-                    date: now.toLocaleDateString('en-CA'),
-                    time: timeString,
-                    location: `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`,
-                    status: lateMinutes > 0 ? 'สาย' : 'ตรงเวลา',
-                    lateMinutes: lateMinutes
-                });
-
-                if (result.success) {
-                    if (lateMinutes > 0) {
-                        showMessage(`✅ เช็คอินสำเร็จ! (สาย ${lateMinutes} นาที)`, 'warning');
-                    } else {
-                        showMessage('✅ เช็คอินสำเร็จ!', 'success');
-                    }
-                    
-                    document.getElementById('currentStatus').textContent = `สถานะ: เช็คอินแล้ว (${timeString} น.)`;
-                    document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%)';
-                } else {
-                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
-                }
-            } catch (error) {
-                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
-                console.error('CheckIn error:', error);
-            }
-
-            updateLocationInfo();
-        }
-
-        async function checkOut() {
-            if (!currentEmployee) {
-                showMessage('กรุณาเลือกพนักงาน', 'warning');
-                return;
-            }
-
-            try {
-                const position = await getCurrentPosition();
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-
-                const distance = calculateDistance(
-                    userLocation.lat, userLocation.lng,
-                    config.officeLat, config.officeLng
-                );
-
-                if (distance > config.allowedRadius) {
-                    showMessage(`ไม่สามารถเช็คเอาท์ได้ คุณอยู่นอกพื้นที่ที่กำหนด (ห่าง ${Math.round(distance)} เมตร)`, 'danger');
-                    return;
-                }
-            } catch (error) {
-                showMessage('ไม่สามารถตรวจสอบตำแหน่งได้ กรุณาเปิด GPS', 'danger');
-                return;
-            }
-
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-
-            const checkOutTime = now.getHours() * 60 + now.getMinutes();
-            const endTime = parseInt(config.workEndTime.split(':')[0]) * 60 + 
-                          parseInt(config.workEndTime.split(':')[1]);
-
-            const earlyMinutes = checkOutTime < endTime ? endTime - checkOutTime : 0;
-
-            try {
-                showMessage('กำลังเช็คเอาท์...', 'success');
-                
-                const result = await callGoogleScriptJSONP('checkout', {
-                    employee: currentEmployee.name,
-                    employeeId: currentEmployee.id,
-                    date: now.toLocaleDateString('en-CA'),
-                    time: timeString,
-                    location: `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`,
-                    workHours: '8.0',
-                    otHours: '0.0',
-                    status: earlyMinutes > 0 ? 'กลับก่อนเวลา' : 'ปกติ',
-                    earlyMinutes: earlyMinutes
-                });
-
-                if (result.success) {
-                    if (earlyMinutes > 0) {
-                        showMessage(`✅ เช็คเอาท์สำเร็จ! (กลับก่อนเวลา ${earlyMinutes} นาที)`, 'warning');
-                    } else {
-                        showMessage('✅ เช็คเอาท์สำเร็จ!', 'success');
-                    }
-                    
-                    document.getElementById('currentStatus').textContent = `สถานะ: เช็คเอาท์แล้ว (${timeString} น.)`;
-                    document.getElementById('statusCard').style.background = 'linear-gradient(135deg, #ffd3a5 0%, #fd9853 100%)';
-                } else {
-                    showMessage('❌ เกิดข้อผิดพลาด: ' + result.error, 'danger');
-                }
-            } catch (error) {
-                showMessage('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error.message, 'danger');
-                console.error('CheckOut error:', error);
-            }
-        }
-
-        async function loadDashboardData() {
-            try {
-                const result = await callGoogleScriptJSONP('getDashboardData');
-                
-                if (result.success) {
-                    const data = result.data;
-                    
-                    document.getElementById('todayStats').innerHTML = `
-                        <div class="summary-item">
-                            <span>พนักงานเช็คอินแล้ว:</span>
-                            <span class="summary-value">${data.checkedInCount}/${employees.length}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span>มาสาย:</span>
-                            <span class="summary-value">${data.lateCount} คน</span>
-                        </div>
-                        <div class="summary-item">
-                            <span>เช็คเอาท์แล้ว:</span>
-                            <span class="summary-value">${data.checkedOutCount}/${employees.length}</span>
-                        </div>
-                    `;
-                    
-                    if (data.lateEmployees && data.lateEmployees.length > 0) {
-                        document.getElementById('lateEmployees').innerHTML = data.lateEmployees.map(emp => `
-                            <div class="late-item">
-                                <strong>${emp.name}</strong><br>
-                                เช็คอิน: ${emp.checkInTime} น. (สาย ${emp.lateMinutes} นาที)
-                            </div>
-                        `).join('');
-                    } else {
-                        document.getElementById('lateEmployees').innerHTML = '<p style="text-align: center; color: #28a745;">ไม่มีพนักงานมาสาย 👍</p>';
-                    }
-                    
-                    if (data.earlyEmployees && data.earlyEmployees.length > 0) {
-                        document.getElementById('earlyEmployees').innerHTML = data.earlyEmployees.map(emp => `
-                            <div class="early-item">
-                                <strong>${emp.name}</strong><br>
-                                เช็คเอาท์: ${emp.checkOutTime} น. (กลับก่อน ${emp.earlyMinutes} นาที)
-                            </div>
-                        `).join('');
-                    } else {
-                        document.getElementById('earlyEmployees').innerHTML = '<p style="text-align: center; color: #28a745;">ไม่มีพนักงานกลับก่อนเวลา 👍</p>';
-                    }
-                    
-                } else {
-                    document.getElementById('todayStats').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
-                    document.getElementById('lateEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
-                    document.getElementById('earlyEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาด: ' + result.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('todayStats').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
-                document.getElementById('lateEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
-                document.getElementById('earlyEmployees').innerHTML = '<p style="color: #dc3545;">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>';
-                console.error('Dashboard error:', error);
-            }
-            
-            updateSalaryStats();
-        }
-
-        function updateSalaryStats() {
-            const totalSalary = employees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
-            const estimatedOT = 5000;
-            const socialSecurity = 750;
-            
-            document.getElementById('salaryStats').innerHTML = `
-                <div class="summary-item">
-                    <span>เงินเดือนรวม:</span>
-                    <span class="summary-value">${totalSalary.toLocaleString()} บาท</span>
-                </div>
-                <div class="summary-item">
-                    <span>OT รวม (ประมาณ):</span>
-                    <span class="summary-value">${estimatedOT.toLocaleString()} บาท</span>
-                </div>
-                <div class="summary-item">
-                    <span>ประกันสังคม:</span>
-                    <span class="summary-value">-${socialSecurity.toLocaleString()} บาท</span>
-                </div>
-                <div class="summary-item">
-                    <span>สุทธิ (ประมาณ):</span>
-                    <span class="summary-value" style="color: #28a745;">${(totalSalary + estimatedOT - socialSecurity).toLocaleString()} บาท</span>
-                </div>
-            `;
-        }
-
-        function refreshDashboard() {
-            loadDashboardData();
-            showMessage('รีเฟรชข้อมูลแล้ว', 'success');
-        }
-
-        function generateReport() {
-            showMessage('ฟีเจอร์รายงานอยู่ระหว่างพัฒนา', 'warning');
-        }
-
-        function generateEmployeeReport() {
-            const selectedEmployee = document.getElementById('reportEmployee').value;
-            if (!selectedEmployee) {
-                showMessage('กรุณาเลือกพนักงาน', 'warning');
-                return;
-            }
-
-            const employee = employees.find(emp => emp.id === selectedEmployee);
-            if (!employee) {
-                showMessage('ไม่พบข้อมูลพนักงาน', 'danger');
-                return;
-            }
-
-            const reportHTML = `
-                <div class="admin-card">
-                    <h3>👤 รายงานส่วนบุคคล - ${employee.name}</h3>
-                    <div class="admin-section">
-                        <div class="admin-card">
-                            <h4>📈 สถิติการทำงาน (เดือนนี้)</h4>
-                            <div class="summary-item">
-                                <span>วันทำงาน:</span>
-                                <span class="summary-value">22/22 วัน</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>มาสาย:</span>
-                                <span class="summary-value">2 ครั้ง</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>กลับก่อนเวลา:</span>
-                                <span class="summary-value">0 ครั้ง</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>ชั่วโมงทำงานรวม:</span>
-                                <span class="summary-value">176 ชั่วโมง</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>ชั่วโมง OT:</span>
-                                <span class="summary-value">8 ชั่วโมง</span>
-                            </div>
-                        </div>
-                        
-                        <div class="admin-card">
-                            <h4>💰 คำนวณเงินเดือน</h4>
-                            <div class="summary-item">
-                                <span>เงินเดือนพื้นฐาน:</span>
-                                <span class="summary-value">${employee.salary.toLocaleString()} บาท</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>ค่า OT (8 ชม. x ${config.otRate} บาท):</span>
-                                <span class="summary-value">${(8 * config.otRate).toLocaleString()} บาท</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>รวมก่อนหัก:</span>
-                                <span class="summary-value">${(employee.salary + (8 * config.otRate)).toLocaleString()} บาท</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>ประกันสังคม (${config.socialSecurityRate}%):</span>
-                                <span class="summary-value">-${Math.min((employee.salary * config.socialSecurityRate / 100), config.socialSecurityCap).toLocaleString()} บาท</span>
-                            </div>
-                            <div class="summary-item">
-                                <span><strong>เงินเดือนสุทธิ:</strong></span>
-                                <span class="summary-value" style="color: #28a745;"><strong>${(employee.salary + (8 * config.otRate) - Math.min((employee.salary * config.socialSecurityRate / 100), config.socialSecurityCap)).toLocaleString()} บาท</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('reportResult').innerHTML = reportHTML;
-            showMessage('สร้างรายงานพนักงานเรียบร้อย', 'success');
-        }
-
-        function exportToSheets() {
-            if (config.googleSheetsUrl) {
-                window.open(config.googleSheetsUrl, '_blank');
-            } else {
-                showMessage('กรุณากำหนดค่า Google Sheets URL ในแท็บตั้งค่า', 'warning');
-            }
-        }
-
-        function copyEmployeeLink() {
-            const link = 'https://chaum2021.github.io/employee-checkin-system/employee.html?script=https%3A//script.google.com/macros/s/AKfycbwpy9Q7bpm-b2ERNGZGhxhFfkqfWhiPJR7GcFUrz_HZBTRXsv8VDWPlfJ3mojV0-TgZ/exec';
-            navigator.clipboard.writeText(link).then(() => {
-                showMessage('คัดลอกลิงก์เรียบร้อย', 'success');
-            });
-        }
-
-        function showMessage(message, type = 'success') {
-            const messageArea = document.getElementById('messageArea');
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
-            
-            messageArea.innerHTML = '';
-            messageArea.appendChild(alertDiv);
-            
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
-        }
-    </script>
-</body>
-</html>
